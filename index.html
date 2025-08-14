@@ -16,7 +16,7 @@
     button{border:1px solid #ccc; border-radius:10px; background:#fff}
     input, select, textarea{border:1px solid #ccc; border-radius:10px; background:#fff; flex:1}
     textarea{min-height:38px}
-    .toolbar{display:flex; gap:8px; align-items:center; margin:10px 0}
+    .toolbar{display:flex; gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap}
     .pill{font-size:12px; padding:4px 8px; border:1px solid #aaa; border-radius:999px; background:#fff}
     .group{margin:14px 0}
     .group h2{font-size:16px; margin:10px 0 6px; color:#333}
@@ -54,6 +54,7 @@
   <div class="toolbar">
     <input id="filter" placeholder="Filtrar por texto o rubro..." />
     <button id="clearDone">Borrar comprados</button>
+    <button id="shareBtn">Compartir</button>
     <button id="exportBtn">Exportar</button>
     <input type="file" id="importFile" accept="application/json" style="display:none" />
     <button id="importBtn">Importar</button>
@@ -126,6 +127,7 @@ const exportBtn = document.getElementById('exportBtn');
 const importBtn = document.getElementById('importBtn');
 const importFile = document.getElementById('importFile');
 const quickCats = document.getElementById('quickCats');
+const shareBtn = document.getElementById('shareBtn');
 
 CATS.forEach(c=>{
   const b=document.createElement('button');
@@ -209,6 +211,44 @@ async function render(){
   stats.textContent = `${all.length} ítems (${remaining} pendientes)`;
 }
 
+// ---- Compartir por WhatsApp / compartir nativo ----
+async function buildShareText(){
+  const items = await getAll();
+  const pending = items.filter(x=>!x.done);
+  if(pending.length===0) return "Lista de compras: (vacía)";
+  const groups = {};
+  for(const it of pending){
+    const k = it.category || 'Otros';
+    (groups[k] = groups[k] || []).push(it);
+  }
+  const cats = Object.keys(groups).sort((a,b)=> a.localeCompare(b));
+  let lines = ["🛒 Lista de compras"];
+  for(const c of cats){
+    lines.push(`
+${c}:`);
+    for(const it of groups[c]){
+      const qty = it.qty ? ` x ${it.qty}` : "";
+      const note = it.note ? ` (${it.note})` : "";
+      lines.push(` • ${it.name}${qty}${note}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+async function share(){
+  const text = await buildShareText();
+  if(navigator.share){
+    try{
+      await navigator.share({text});
+      return;
+    }catch(e){ /* si cancela, seguimos al fallback */ }
+  }
+  const url = "https://wa.me/?text=" + encodeURIComponent(text);
+  window.open(url, "_blank");
+}
+
+shareBtn.onclick = share;
+
 addBtn.onclick = add;
 nameEl.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
 qtyEl.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
@@ -235,7 +275,6 @@ importFile.onchange = async (e)=>{
   const text = await file.text();
   let arr = [];
   try{ arr = JSON.parse(text); } catch { alert('Archivo inválido'); return; }
-  // merge simple
   const existing = await getAll(); const map = new Map(existing.map(x=>[x.id,x]));
   for(const it of arr){ map.set(it.id, it); }
   await withStore('readwrite', s=>s.clear());
