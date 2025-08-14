@@ -19,7 +19,7 @@
     .toolbar{display:flex; gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap}
     .pill{font-size:12px; padding:4px 8px; border:1px solid #aaa; border-radius:999px; background:#fff}
     .group{margin:14px 0}
-    .group h2{font-size:16px; margin:10px 0 6px; color:#333}
+    .group h2{font-size:16px; margin:10px 0 6px; color:#333; display:inline-block; padding:4px 10px; border-radius:8px}
     ul{list-style:none; padding:0; margin:0}
     li{display:flex; align-items:start; gap:8px; padding:10px; border:1px solid #ddd; border-radius:12px; background:#fff; margin-bottom:8px}
     .done{opacity:.55; text-decoration:line-through}
@@ -44,6 +44,8 @@
       <option>Ferretería</option>
       <option>Mercería</option>
       <option>Librería</option>
+      <option>Farmacia</option>
+      <option>Otros</option>
     </select>
     <button id="addBtn">Agregar</button>
   </div>
@@ -66,7 +68,6 @@
   <p class="small" id="stats"></p>
 
 <script>
-// ------- Almacenamiento robusto en iOS: IndexedDB --------
 const DB_NAME = 'shopping_db_v1';
 const STORE = 'items';
 let db;
@@ -112,8 +113,19 @@ async function getAll(){
   });
 }
 
-// ------- App -------
-const CATS = ["Carnicería","Verdulería","Supermercado","Dietética","Ferretería","Mercería","Librería"];
+const CATS = ["Carnicería","Verdulería","Supermercado","Dietética","Ferretería","Mercería","Librería","Farmacia","Otros"];
+const CAT_COLORS = {
+  "Carnicería": "#f28b82",
+  "Verdulería": "#81c995",
+  "Supermercado": "#fbbc04",
+  "Dietética": "#a7ffeb",
+  "Ferretería": "#d7aefb",
+  "Mercería": "#fdcfe8",
+  "Librería": "#aecbfa",
+  "Farmacia": "#fff475",
+  "Otros": "#e6c9a8"
+};
+
 const nameEl = document.getElementById('itemName');
 const qtyEl  = document.getElementById('itemQty');
 const catEl  = document.getElementById('itemCat');
@@ -133,6 +145,7 @@ CATS.forEach(c=>{
   const b=document.createElement('button');
   b.className='pill';
   b.textContent=c;
+  setCatStyle(b, c, 0.2);
   b.onclick=()=>{ filterEl.value=c; render(); };
   quickCats.appendChild(b);
 });
@@ -164,6 +177,12 @@ async function toggle(id){
 }
 async function remove(id){ await delItem(id); render(); }
 
+function setCatStyle(el, cat, strength=1){
+  const base = CAT_COLORS[cat] || "#e0e0e0";
+  el.style.background = base;
+  el.style.borderColor = "#999";
+}
+
 function itemRow(it){
   const li = document.createElement('li');
   const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=it.done; cb.onchange=()=>toggle(it.id);
@@ -175,6 +194,7 @@ function itemRow(it){
   if(it.done) text.className='done';
 
   const cat = document.createElement('span'); cat.className='pill'; cat.textContent = it.category;
+  setCatStyle(cat, it.category);
   const del = document.createElement('button'); del.textContent='Eliminar'; del.onclick=()=>remove(it.id);
 
   const meta = document.createElement('div'); meta.className='meta'; meta.appendChild(cat); meta.appendChild(del);
@@ -190,7 +210,6 @@ async function render(){
     .filter(t=> !q || t.name.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q) || (t.note||'').toLowerCase().includes(q))
     .sort((a,b)=> Number(a.done) - Number(b.done) || (a.category||'').localeCompare(b.category||'') || b.created - a.created);
 
-  // agrupar por categoría
   listContainer.innerHTML='';
   const groups = {};
   for(const it of items){
@@ -201,6 +220,7 @@ async function render(){
   for(const c of cats){
     const g = document.createElement('div'); g.className='group';
     const h = document.createElement('h2'); h.textContent = c;
+    setCatStyle(h, c);
     const ul = document.createElement('ul');
     groups[c].forEach(it=> ul.appendChild(itemRow(it)));
     g.appendChild(h); g.appendChild(ul); listContainer.appendChild(g);
@@ -211,7 +231,6 @@ async function render(){
   stats.textContent = `${all.length} ítems (${remaining} pendientes)`;
 }
 
-// ---- Compartir por WhatsApp / compartir nativo ----
 async function buildShareText(){
   const items = await getAll();
   const pending = items.filter(x=>!x.done);
@@ -224,8 +243,7 @@ async function buildShareText(){
   const cats = Object.keys(groups).sort((a,b)=> a.localeCompare(b));
   let lines = ["🛒 Lista de compras"];
   for(const c of cats){
-    lines.push(`
-${c}:`);
+    lines.push(`\n${c}:`);
     for(const it of groups[c]){
       const qty = it.qty ? ` x ${it.qty}` : "";
       const note = it.note ? ` (${it.note})` : "";
@@ -241,7 +259,7 @@ async function share(){
     try{
       await navigator.share({text});
       return;
-    }catch(e){ /* si cancela, seguimos al fallback */ }
+    }catch(e){}
   }
   const url = "https://wa.me/?text=" + encodeURIComponent(text);
   window.open(url, "_blank");
@@ -260,7 +278,6 @@ clearDone.onclick = async ()=>{
   render();
 };
 
-// Export / Import
 exportBtn.onclick = async ()=>{
   const items = await getAll();
   const blob = new Blob([JSON.stringify(items,null,2)], {type:'application/json'});
@@ -282,12 +299,10 @@ importFile.onchange = async (e)=>{
   render();
 };
 
-// PWA: registrar service worker
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js'));
 }
 
-// init
 openDB().then(render);
 </script>
 </body>
