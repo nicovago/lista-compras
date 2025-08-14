@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lista de Compras</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root{--pad:14px}
+    *{box-sizing:border-box}
+    body{font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:var(--pad); background:#f7f7f8;}
+    h1{margin:0 0 8px}
+    .row{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap}
+    input, button, select, textarea{padding:10px; font-size:16px}
+    button{border:1px solid #ccc; border-radius:10px; background:#fff}
+    input, select, textarea{border:1px solid #ccc; border-radius:10px; background:#fff; flex:1}
+    textarea{min-height:38px}
+    .toolbar{display:flex; gap:8px; align-items:center; margin:10px 0}
+    .pill{font-size:12px; padding:4px 8px; border:1px solid #aaa; border-radius:999px; background:#fff}
+    .group{margin:14px 0}
+    .group h2{font-size:16px; margin:10px 0 6px; color:#333}
+    ul{list-style:none; padding:0; margin:0}
+    li{display:flex; align-items:start; gap:8px; padding:10px; border:1px solid #ddd; border-radius:12px; background:#fff; margin-bottom:8px}
+    .done{opacity:.55; text-decoration:line-through}
+    .meta{margin-left:auto; display:flex; gap:6px}
+    .small{font-size:12px; color:#666}
+    .qty{width:90px}
+    .rubros{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0}
+    .rubros button{padding:6px 10px}
+  </style>
+</head>
+<body>
+  <h1>🛒 Lista de Compras</h1>
+
+  <div class="row">
+    <input id="itemName" placeholder="Ej: Bife de chorizo" />
+    <input id="itemQty" class="qty" placeholder="Cant." />
+    <select id="itemCat">
+      <option>Carnicería</option>
+      <option>Verdulería</option>
+      <option>Supermercado</option>
+      <option>Dietética</option>
+      <option>Ferretería</option>
+      <option>Mercería</option>
+      <option>Librería</option>
+    </select>
+    <button id="addBtn">Agregar</button>
+  </div>
+  <div class="row">
+    <textarea id="itemNote" placeholder="Nota (opcional): marca, corte, maduro, etc."></textarea>
+  </div>
+
+  <div class="toolbar">
+    <input id="filter" placeholder="Filtrar por texto o rubro..." />
+    <button id="clearDone">Borrar comprados</button>
+    <button id="exportBtn">Exportar</button>
+    <input type="file" id="importFile" accept="application/json" style="display:none" />
+    <button id="importBtn">Importar</button>
+  </div>
+
+  <div class="rubros" id="quickCats"></div>
+
+  <div id="listContainer"></div>
+  <p class="small" id="stats"></p>
+
+<script>
+// ------- Almacenamiento robusto en iOS: IndexedDB --------
+const DB_NAME = 'shopping_db_v1';
+const STORE = 'items';
+let db;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME,1);
+    req.onupgradeneeded = e=>{
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        const os = db.createObjectStore(STORE,{keyPath:'id'});
+        os.createIndex('by_cat','category',{unique:false});
+        os.createIndex('by_done','done',{unique:false});
+        os.createIndex('by_created','created',{unique:false});
+      }
+    };
+    req.onsuccess = ()=>resolve(req.result);
+    req.onerror = ()=>reject(req.error);
+  });
+}
+async function withStore(mode, fn){
+  if(!db) db = await openDB();
+  return new Promise((resolve,reject)=>{
+    const tx = db.transaction(STORE, mode);
+    const store = tx.objectStore(STORE);
+    const res = fn(store);
+    tx.oncomplete = ()=>resolve(res);
+    tx.onerror = ()=>reject(tx.error);
+  });
+}
+async function addItem(it){ return withStore('readwrite', s=>s.add(it)); }
+async function putItem(it){ return withStore('readwrite', s=>s.put(it)); }
+async function delItem(id){ return withStore('readwrite', s=>s.delete(id)); }
+async function getAll(){
+  return withStore('readonly', s=>{
+    return new Promise((resolve,_)=>{
+      const out=[]; const req = s.openCursor();
+      req.onsuccess = e=>{
+        const cur = e.target.result;
+        if(cur){ out.push(cur.value); cur.continue(); } else resolve(out);
+      };
+    });
+  });
+}
+
+// ------- App -------
+const CATS = ["Carnicería","Verdulería","Supermercado","Dietética","Ferretería","Mercería","Librería"];
+const nameEl = document.getElementById('itemName');
+const qtyEl  = document.getElementById('itemQty');
+const catEl  = document.getElementById('itemCat');
+const noteEl = document.getElementById('itemNote');
+const addBtn = document.getElementById('addBtn');
+const filterEl = document.getElementById('filter');
+const clearDone = document.getElementById('clearDone');
+const listContainer = document.getElementById('listContainer');
+const stats = document.getElementById('stats');
+const exportBtn = document.getElementById('exportBtn');
+const importBtn = document.getElementById('importBtn');
+const importFile = document.getElementById('importFile');
+const quickCats = document.getElementById('quickCats');
+
+CATS.forEach(c=>{
+  const b=document.createElement('button');
+  b.className='pill';
+  b.textContent=c;
+  b.onclick=()=>{ filterEl.value=c; render(); };
+  quickCats.appendChild(b);
+});
+
+function uuid(){ return (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36)+Math.random().toString(36).slice(2)); }
+
+async function add(){
+  const name = (nameEl.value||'').trim();
+  if(!name) return;
+  const item = {
+    id: uuid(),
+    name,
+    qty: (qtyEl.value||'').trim(),
+    category: catEl.value,
+    note: (noteEl.value||'').trim(),
+    done: false,
+    created: Date.now()
+  };
+  await addItem(item);
+  nameEl.value=''; qtyEl.value=''; noteEl.value='';
+  nameEl.focus();
+  render();
+}
+
+async function toggle(id){
+  const items = await getAll();
+  const it = items.find(x=>x.id===id); if(!it) return;
+  it.done=!it.done; await putItem(it); render();
+}
+async function remove(id){ await delItem(id); render(); }
+
+function itemRow(it){
+  const li = document.createElement('li');
+  const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=it.done; cb.onchange=()=>toggle(it.id);
+
+  const text = document.createElement('div');
+  text.innerHTML = `<strong>${escapeHtml(it.name)}</strong> ` +
+    (it.qty?`<span class="pill">${escapeHtml(it.qty)}</span> `:'') +
+    (it.note?`<div class="small">${escapeHtml(it.note)}</div>`:'');
+  if(it.done) text.className='done';
+
+  const cat = document.createElement('span'); cat.className='pill'; cat.textContent = it.category;
+  const del = document.createElement('button'); del.textContent='Eliminar'; del.onclick=()=>remove(it.id);
+
+  const meta = document.createElement('div'); meta.className='meta'; meta.appendChild(cat); meta.appendChild(del);
+  li.appendChild(cb); li.appendChild(text); li.appendChild(meta);
+  return li;
+}
+
+function escapeHtml(s){ return s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
+
+async function render(){
+  const q = filterEl.value.toLowerCase().trim();
+  const items = (await getAll())
+    .filter(t=> !q || t.name.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q) || (t.note||'').toLowerCase().includes(q))
+    .sort((a,b)=> Number(a.done) - Number(b.done) || (a.category||'').localeCompare(b.category||'') || b.created - a.created);
+
+  // agrupar por categoría
+  listContainer.innerHTML='';
+  const groups = {};
+  for(const it of items){
+    const k = it.category || 'Otros';
+    (groups[k] = groups[k] || []).push(it);
+  }
+  const cats = Object.keys(groups).sort((a,b)=> a.localeCompare(b));
+  for(const c of cats){
+    const g = document.createElement('div'); g.className='group';
+    const h = document.createElement('h2'); h.textContent = c;
+    const ul = document.createElement('ul');
+    groups[c].forEach(it=> ul.appendChild(itemRow(it)));
+    g.appendChild(h); g.appendChild(ul); listContainer.appendChild(g);
+  }
+
+  const all = await getAll();
+  const remaining = all.filter(t=>!t.done).length;
+  stats.textContent = `${all.length} ítems (${remaining} pendientes)`;
+}
+
+addBtn.onclick = add;
+nameEl.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
+qtyEl.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
+noteEl.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.metaKey) add(); });
+filterEl.addEventListener('input', render);
+clearDone.onclick = async ()=>{ 
+  const items = await getAll();
+  await Promise.all(items.filter(x=>x.done).map(x=>delItem(x.id)));
+  render();
+};
+
+// Export / Import
+exportBtn.onclick = async ()=>{
+  const items = await getAll();
+  const blob = new Blob([JSON.stringify(items,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'lista_compras.json'; a.click();
+  URL.revokeObjectURL(url);
+};
+importBtn.onclick = ()=>importFile.click();
+importFile.onchange = async (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const text = await file.text();
+  let arr = [];
+  try{ arr = JSON.parse(text); } catch { alert('Archivo inválido'); return; }
+  // merge simple
+  const existing = await getAll(); const map = new Map(existing.map(x=>[x.id,x]));
+  for(const it of arr){ map.set(it.id, it); }
+  await withStore('readwrite', s=>s.clear());
+  for(const it of map.values()) await addItem(it);
+  render();
+};
+
+// PWA: registrar service worker
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js'));
+}
+
+// init
+openDB().then(render);
+</script>
+</body>
+</html>
