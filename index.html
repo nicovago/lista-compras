@@ -183,24 +183,37 @@ function setCatStyle(el, cat, strength=1){
   el.style.borderColor = "#999";
 }
 
+
 function itemRow(it){
   const li = document.createElement('li');
-  const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=it.done; cb.onchange=()=>toggle(it.id);
-
-  const text = document.createElement('div');
-  text.innerHTML = `<strong>${escapeHtml(it.name)}</strong> ` +
-    (it.qty?`<span class="pill">${escapeHtml(it.qty)}</span> `:'') +
-    (it.note?`<div class="small">${escapeHtml(it.note)}</div>`:'');
-  if(it.done) text.className='done';
-
-  const cat = document.createElement('span'); cat.className='pill'; cat.textContent = it.category;
-  setCatStyle(cat, it.category);
-  const del = document.createElement('button'); del.textContent='Eliminar'; del.onclick=()=>remove(it.id);
-
-  const meta = document.createElement('div'); meta.className='meta'; meta.appendChild(cat); meta.appendChild(del);
-  li.appendChild(cb); li.appendChild(text); li.appendChild(meta);
+  if(it.done) li.classList.add('done');
+  
+  const cb = document.createElement('input'); 
+  cb.type='checkbox'; 
+  cb.checked=it.done; 
+  cb.onchange=()=>toggle(it.id);
+  
+  const nameDiv = document.createElement('div');
+  nameDiv.style.flex = '1';
+  nameDiv.style.textAlign = 'left';
+  nameDiv.innerHTML = `<strong>${escapeHtml(it.name)}</strong>` + (it.note ? `<div class="small">${escapeHtml(it.note)}</div>` : '');
+  
+  const qtySpan = document.createElement('span');
+  qtySpan.textContent = it.qty || '';
+  qtySpan.style.minWidth = '50px';
+  qtySpan.style.textAlign = 'right';
+  
+  const del = document.createElement('button'); 
+  del.textContent='Eliminar'; 
+  del.onclick=()=>remove(it.id);
+  
+  li.appendChild(cb);
+  li.appendChild(nameDiv);
+  li.appendChild(qtySpan);
+  li.appendChild(del);
   return li;
 }
+
 
 function escapeHtml(s){ return s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
 
