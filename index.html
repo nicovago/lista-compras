@@ -156,7 +156,10 @@ CATS.forEach(c=>{
   b.className='pill';
   b.textContent=c;
   setCatStyle(b, c, 0.2);
-  b.onclick=()=>{ filterEl.value=c; render(); };
+  b.onclick=()=>{
+    filterEl.value=c;
+    filterEl.dispatchEvent(new Event('input'));
+  };
   quickCats.appendChild(b);
 });
 
