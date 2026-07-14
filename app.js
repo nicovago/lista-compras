@@ -43,4 +43,4 @@ async function boot(){
   onAuthStateChanged(auth,u=>{user=u;if(u){el.authGate.classList.add('hidden');el.app.classList.remove('hidden');el.initial.textContent=(u.displayName||u.email||'U')[0].toUpperCase();subscribe();}else{unsubscribe?.();items=[];el.app.classList.add('hidden');el.authGate.classList.remove('hidden');}});
 }
 boot();
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=14',{updateViaCache:'none'}).then(r=>r.update()));
+if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=15',{updateViaCache:'none'}).then(r=>r.update()));
