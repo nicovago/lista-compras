@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#ff7a59">
   <title>Lista de Compras</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=8">
-  <link rel="stylesheet" href="theme-v2.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=9">
+  <link rel="stylesheet" href="theme-v2.css?v=9">
 </head>
 <body>
   <main class="app-shell">
@@ -35,13 +35,22 @@
     <div class="list-heading"><div><p class="section-kicker">Pendientes y comprados</p><h2>Mi lista</h2></div><p id="stats" class="stats"></p></div>
     <section id="listContainer" aria-live="polite"></section>
     <nav class="bottom-actions" aria-label="Acciones de la lista">
-      <button id="shareBtn"><span aria-hidden="true">↗</span><span>Compartir</span></button>
-      <button id="exportBtn"><span aria-hidden="true">⇩</span><span>Exportar</span></button>
-      <button id="importBtn"><span aria-hidden="true">⇧</span><span>Importar</span></button>
+      <button id="shareBtn">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg>
+        <span>Compartir</span>
+      </button>
+      <button id="exportBtn">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg>
+        <span>Exportar</span>
+      </button>
+      <button id="importBtn">
+        <svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V8m0 0-4 4m4-4 4 4M5 5h14"/></svg>
+        <span>Importar</span>
+      </button>
       <button id="clearDone" class="danger"><span aria-hidden="true">🗑️</span><span>Eliminar comprados</span></button>
       <input type="file" id="importFile" accept="application/json" hidden>
     </nav>
   </main>
-  <script src="app.js?v=8" defer></script>
+  <script src="app.js?v=9" defer></script>
 </body>
 </html>
