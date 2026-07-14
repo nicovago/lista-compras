@@ -1,5 +1,5 @@
-const CACHE='compras-v15-offline';
-const LOCAL_ASSETS=['./','./index.html','./styles.css?v=15','./theme-v2.css?v=15','./app.js?v=15','./manifest.json','./icon-192.png','./icon-512.png'];
+const CACHE='compras-v16-offline';
+const LOCAL_ASSETS=['./','./index.html','./styles.css?v=15','./theme-v2.css?v=15','./app.js?v=16','./manifest.json','./icon-192.png','./icon-512.png'];
 const FIREBASE_ASSETS=[
   'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js',
