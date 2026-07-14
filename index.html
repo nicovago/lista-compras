@@ -6,7 +6,8 @@
   <meta name="theme-color" content="#ff7a59">
   <title>Lista de Compras</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="theme-v2.css?v=7">
 </head>
 <body>
   <main class="app-shell">
@@ -31,22 +32,10 @@
       </div>
 
       <div class="form-grid">
-        <label class="field product-field">
-          <span>Producto</span>
-          <input id="itemName" autocomplete="off" placeholder="Ej.: Leche">
-        </label>
-        <label class="field quantity-field">
-          <span>Cantidad</span>
-          <input id="itemQty" autocomplete="off" inputmode="text" placeholder="2">
-        </label>
-        <label class="field category-field">
-          <span>Rubro</span>
-          <select id="itemCat"></select>
-        </label>
-        <label class="field note-field">
-          <span>Nota opcional</span>
-          <textarea id="itemNote" placeholder="Marca, presentación, corte…"></textarea>
-        </label>
+        <label class="field product-field"><span>Producto</span><input id="itemName" autocomplete="off" placeholder="Ej.: Leche"></label>
+        <label class="field quantity-field"><span>Cantidad</span><input id="itemQty" autocomplete="off" inputmode="text" placeholder="2"></label>
+        <label class="field category-field"><span>Rubro</span><select id="itemCat"></select></label>
+        <label class="field note-field"><span>Nota opcional</span><textarea id="itemNote" placeholder="Marca, presentación, corte…"></textarea></label>
       </div>
 
       <div class="actions">
@@ -65,10 +54,7 @@
     </section>
 
     <div class="list-heading">
-      <div>
-        <p class="section-kicker">Pendientes y comprados</p>
-        <h2>Mi lista</h2>
-      </div>
+      <div><p class="section-kicker">Pendientes y comprados</p><h2>Mi lista</h2></div>
       <p id="stats" class="stats"></p>
     </div>
 
@@ -78,11 +64,11 @@
       <button id="shareBtn"><span aria-hidden="true">↗</span><span>Compartir</span></button>
       <button id="exportBtn"><span aria-hidden="true">⇩</span><span>Exportar</span></button>
       <button id="importBtn"><span aria-hidden="true">⇧</span><span>Importar</span></button>
-      <button id="clearDone" class="danger"><span aria-hidden="true">⌫</span><span>Limpiar</span></button>
+      <button id="clearDone" class="danger"><span aria-hidden="true">🗑️</span><span>Eliminar comprados</span></button>
       <input type="file" id="importFile" accept="application/json" hidden>
     </nav>
   </main>
 
-  <script src="app.js" defer></script>
+  <script src="app.js?v=7" defer></script>
 </body>
 </html>
