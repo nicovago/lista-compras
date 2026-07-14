@@ -1,336 +1,56 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#1976d2">
   <title>Lista de Compras</title>
-  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="manifest" href="manifest.json">
-  <style>
-    :root{--pad:14px}
-    *{box-sizing:border-box}
-    body{font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin:var(--pad); background:#f7f7f8;}
-    h1{margin:0 0 8px}
-    .row{display:flex; gap:8px; margin-bottom:10px; flex-wrap:wrap}
-    input, button, select, textarea{padding:10px; font-size:16px}
-    button{border:1px solid #ccc; border-radius:10px; background:#fff}
-    input, select, textarea{border:1px solid #ccc; border-radius:10px; background:#fff; flex:1}
-    textarea{min-height:38px}
-    .toolbar{display:flex; gap:8px; align-items:center; margin:10px 0; flex-wrap:wrap}
-    .pill{font-size:12px; padding:4px 8px; border:1px solid #aaa; border-radius:999px; background:#fff}
-    .group{margin:14px 0}
-    .group h2{font-size:16px; margin:10px 0 6px; color:#333; display:inline-block; padding:4px 10px; border-radius:8px}
-    ul{list-style:none; padding:0; margin:0}
-    li{display:flex; align-items:start; gap:8px; padding:10px; border:1px solid #ddd; border-radius:12px; background:#fff; margin-bottom:8px}
-    .done{opacity:.55; text-decoration:line-through}
-    .meta{margin-left:auto; display:flex; gap:6px}
-    .small{font-size:12px; color:#666}
-    .qty{width:90px}
-    .rubros{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0}
-    .rubros button{padding:6px 10px}
-  
-    .filter-wrap{position:relative; display:flex; align-items:center; flex:1; min-width:220px}
-    .filter-wrap input{flex:1; padding-right:38px}
-    #filterClear{
-      position:absolute; right:8px; border:1px solid #ccc; width:28px; height:28px; border-radius:50%;
-      display:none; align-items:center; justify-content:center; font-size:18px; line-height:1; background:#fff; cursor:pointer;
-    }
-    #filterClear:active{transform:scale(0.96)}
-
-  </style>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>🛒 Lista de Compras</h1>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Lista familiar</p>
+        <h1>🛒 Lista de Compras</h1>
+      </div>
+      <span id="syncStatus" class="status">Guardado local</span>
+    </header>
 
-  <div class="row">
-    <input id="itemName" placeholder="Ej: Bife de chorizo" />
-    <input id="itemQty" class="qty" placeholder="Cant." />
-    <select id="itemCat">
-      <option>Carnicería</option>
-      <option>Verdulería</option>
-      <option>Supermercado</option>
-      <option>Dietética</option>
-      <option>Ferretería</option>
-      <option>Mercería</option>
-      <option>Librería</option>
-      <option>Farmacia</option>
-      <option>Otros</option>
-    </select>
-    <button id="addBtn">Agregar</button>
-  </div>
-  <div class="row">
-    <textarea id="itemNote" placeholder="Nota (opcional): marca, corte, maduro, etc."></textarea>
-  </div>
+    <section class="card composer" aria-labelledby="formTitle">
+      <h2 id="formTitle">Agregar producto</h2>
+      <div class="form-grid">
+        <label>Producto<input id="itemName" autocomplete="off" placeholder="Ej.: Leche"></label>
+        <label>Cantidad<input id="itemQty" autocomplete="off" placeholder="Ej.: 2"></label>
+        <label>Rubro<select id="itemCat"></select></label>
+      </div>
+      <label>Nota<textarea id="itemNote" placeholder="Marca, presentación, corte, etc."></textarea></label>
+      <div class="actions">
+        <button id="cancelEditBtn" class="secondary hidden" type="button">Cancelar edición</button>
+        <button id="addBtn" class="primary" type="button">Agregar</button>
+      </div>
+    </section>
 
-  <div class="toolbar">
-    <span class="filter-wrap"><input id="filter" placeholder="Filtrar por texto o rubro..." /><button id="filterClear" aria-label="Borrar filtro" title="Borrar filtro">×</button></span>
-    <button id="clearDone">Borrar comprados</button>
-    <button id="shareBtn">Compartir</button>
-    <button id="exportBtn">Exportar</button>
-    <input type="file" id="importFile" accept="application/json" style="display:none" />
-    <button id="importBtn">Importar</button>
-  </div>
+    <section class="card toolbar">
+      <div class="filter-wrap">
+        <input id="filter" placeholder="Buscar producto, nota o rubro…">
+        <button id="filterClear" class="icon-btn hidden" aria-label="Borrar filtro">×</button>
+      </div>
+      <div id="quickCats" class="chips"></div>
+      <div class="toolbar-actions">
+        <button id="shareBtn">Compartir</button>
+        <button id="exportBtn">Exportar</button>
+        <button id="importBtn">Importar</button>
+        <button id="clearDone" class="danger">Borrar comprados</button>
+        <input type="file" id="importFile" accept="application/json" hidden>
+      </div>
+    </section>
 
-  <div class="rubros" id="quickCats"></div>
+    <section id="listContainer" aria-live="polite"></section>
+    <p id="stats" class="stats"></p>
+  </main>
 
-  <div id="listContainer"></div>
-  <p class="small" id="stats"></p>
-
-<script>
-const DB_NAME = 'shopping_db_v1';
-const STORE = 'items';
-let db;
-
-function openDB(){
-  return new Promise((resolve,reject)=>{
-    const req = indexedDB.open(DB_NAME,1);
-    req.onupgradeneeded = e=>{
-      const db = e.target.result;
-      if(!db.objectStoreNames.contains(STORE)){
-        const os = db.createObjectStore(STORE,{keyPath:'id'});
-        os.createIndex('by_cat','category',{unique:false});
-        os.createIndex('by_done','done',{unique:false});
-        os.createIndex('by_created','created',{unique:false});
-      }
-    };
-    req.onsuccess = ()=>resolve(req.result);
-    req.onerror = ()=>reject(req.error);
-  });
-}
-async function withStore(mode, fn){
-  if(!db) db = await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx = db.transaction(STORE, mode);
-    const store = tx.objectStore(STORE);
-    const res = fn(store);
-    tx.oncomplete = ()=>resolve(res);
-    tx.onerror = ()=>reject(tx.error);
-  });
-}
-async function addItem(it){ return withStore('readwrite', s=>s.add(it)); }
-async function putItem(it){ return withStore('readwrite', s=>s.put(it)); }
-async function delItem(id){ return withStore('readwrite', s=>s.delete(id)); }
-async function getAll(){
-  return withStore('readonly', s=>{
-    return new Promise((resolve,_)=>{
-      const out=[]; const req = s.openCursor();
-      req.onsuccess = e=>{
-        const cur = e.target.result;
-        if(cur){ out.push(cur.value); cur.continue(); } else resolve(out);
-      };
-    });
-  });
-}
-
-const CATS = ["Carnicería","Verdulería","Supermercado","Dietética","Ferretería","Mercería","Librería","Farmacia","Otros"];
-const CAT_COLORS = {
-  "Carnicería": "#f28b82",
-  "Verdulería": "#81c995",
-  "Supermercado": "#fbbc04",
-  "Dietética": "#a7ffeb",
-  "Ferretería": "#d7aefb",
-  "Mercería": "#fdcfe8",
-  "Librería": "#aecbfa",
-  "Farmacia": "#fff475",
-  "Otros": "#e6c9a8"
-};
-
-const nameEl = document.getElementById('itemName');
-const qtyEl  = document.getElementById('itemQty');
-const catEl  = document.getElementById('itemCat');
-const noteEl = document.getElementById('itemNote');
-const addBtn = document.getElementById('addBtn');
-const filterEl = document.getElementById('filter');
-const filterClearBtn = document.getElementById('filterClear');
-const clearDone = document.getElementById('clearDone');
-const listContainer = document.getElementById('listContainer');
-const stats = document.getElementById('stats');
-const exportBtn = document.getElementById('exportBtn');
-const importBtn = document.getElementById('importBtn');
-const importFile = document.getElementById('importFile');
-const quickCats = document.getElementById('quickCats');
-const shareBtn = document.getElementById('shareBtn');
-
-CATS.forEach(c=>{
-  const b=document.createElement('button');
-  b.className='pill';
-  b.textContent=c;
-  setCatStyle(b, c, 0.2);
-  b.onclick=()=>{
-    filterEl.value=c;
-    filterEl.dispatchEvent(new Event('input'));
-  };
-  quickCats.appendChild(b);
-});
-
-function uuid(){ return (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36)+Math.random().toString(36).slice(2)); }
-
-async function add(){
-  const name = (nameEl.value||'').trim();
-  if(!name) return;
-  const item = {
-    id: uuid(),
-    name,
-    qty: (qtyEl.value||'').trim(),
-    category: catEl.value,
-    note: (noteEl.value||'').trim(),
-    done: false,
-    created: Date.now()
-  };
-  await addItem(item);
-  nameEl.value=''; qtyEl.value=''; noteEl.value='';
-  nameEl.focus();
-  render();
-}
-
-async function toggle(id){
-  const items = await getAll();
-  const it = items.find(x=>x.id===id); if(!it) return;
-  it.done=!it.done; await putItem(it); render();
-}
-async function remove(id){ await delItem(id); render(); }
-
-function setCatStyle(el, cat, strength=1){
-  const base = CAT_COLORS[cat] || "#e0e0e0";
-  el.style.background = base;
-  el.style.borderColor = "#999";
-}
-
-
-function itemRow(it){
-  const li = document.createElement('li');
-  if(it.done) li.classList.add('done');
-  
-  const cb = document.createElement('input'); 
-  cb.type='checkbox'; 
-  cb.checked=it.done; 
-  cb.onchange=()=>toggle(it.id);
-  
-  const nameDiv = document.createElement('div');
-  nameDiv.style.flex = '1';
-  nameDiv.style.textAlign = 'left';
-  nameDiv.innerHTML = `<strong>${escapeHtml(it.name)}</strong>` + (it.note ? `<div class="small">${escapeHtml(it.note)}</div>` : '');
-  
-  const qtySpan = document.createElement('span');
-  qtySpan.textContent = it.qty || '';
-  qtySpan.style.minWidth = '50px';
-  qtySpan.style.textAlign = 'right';
-  
-  const del = document.createElement('button'); 
-  del.textContent='Eliminar'; 
-  del.onclick=()=>remove(it.id);
-  
-  li.appendChild(cb);
-  li.appendChild(nameDiv);
-  li.appendChild(qtySpan);
-  li.appendChild(del);
-  return li;
-}
-
-
-function escapeHtml(s){ return s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[m])); }
-
-async function render(){
-  const q = filterEl.value.toLowerCase().trim();
-  const items = (await getAll())
-    .filter(t=> !q || t.name.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q) || (t.note||'').toLowerCase().includes(q))
-    .sort((a,b)=> Number(a.done) - Number(b.done) || (a.category||'').localeCompare(b.category||'') || b.created - a.created);
-
-  listContainer.innerHTML='';
-  const groups = {};
-  for(const it of items){
-    const k = it.category || 'Otros';
-    (groups[k] = groups[k] || []).push(it);
-  }
-  const cats = Object.keys(groups).sort((a,b)=> a.localeCompare(b));
-  for(const c of cats){
-    const g = document.createElement('div'); g.className='group';
-    const h = document.createElement('h2'); h.textContent = c;
-    setCatStyle(h, c);
-    const ul = document.createElement('ul');
-    groups[c].forEach(it=> ul.appendChild(itemRow(it)));
-    g.appendChild(h); g.appendChild(ul); listContainer.appendChild(g);
-  }
-
-  const all = await getAll();
-  const remaining = all.filter(t=>!t.done).length;
-  stats.textContent = `${all.length} ítems (${remaining} pendientes)`;
-}
-
-async function buildShareText(){
-  const items = await getAll();
-  const pending = items.filter(x=>!x.done);
-  if(pending.length===0) return "Lista de compras: (vacía)";
-  const groups = {};
-  for(const it of pending){
-    const k = it.category || 'Otros';
-    (groups[k] = groups[k] || []).push(it);
-  }
-  const cats = Object.keys(groups).sort((a,b)=> a.localeCompare(b));
-  let lines = ["🛒 Lista de compras"];
-  for(const c of cats){
-    lines.push(`\n${c}:`);
-    for(const it of groups[c]){
-      const qty = it.qty ? ` x ${it.qty}` : "";
-      const note = it.note ? ` (${it.note})` : "";
-      lines.push(` • ${it.name}${qty}${note}`);
-    }
-  }
-  return lines.join("\n");
-}
-
-async function share(){
-  const text = await buildShareText();
-  if(navigator.share){
-    try{
-      await navigator.share({text});
-      return;
-    }catch(e){}
-  }
-  const url = "https://wa.me/?text=" + encodeURIComponent(text);
-  window.open(url, "_blank");
-}
-
-shareBtn.onclick = share;
-filterClearBtn.onclick = ()=>{ filterEl.value=''; filterClearBtn.style.display='none'; render(); };
-
-addBtn.onclick = add;
-nameEl.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
-qtyEl.addEventListener('keydown', e=>{ if(e.key==='Enter') add(); });
-noteEl.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.metaKey) add(); });
-filterEl.addEventListener('input', ()=>{ filterClearBtn.style.display = filterEl.value ? 'inline-flex' : 'none'; render(); });
-clearDone.onclick = async ()=>{ 
-  const items = await getAll();
-  await Promise.all(items.filter(x=>x.done).map(x=>delItem(x.id)));
-  render();
-};
-
-exportBtn.onclick = async ()=>{
-  const items = await getAll();
-  const blob = new Blob([JSON.stringify(items,null,2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = 'lista_compras.json'; a.click();
-  URL.revokeObjectURL(url);
-};
-importBtn.onclick = ()=>importFile.click();
-importFile.onchange = async (e)=>{
-  const file = e.target.files[0]; if(!file) return;
-  const text = await file.text();
-  let arr = [];
-  try{ arr = JSON.parse(text); } catch { alert('Archivo inválido'); return; }
-  const existing = await getAll(); const map = new Map(existing.map(x=>[x.id,x]));
-  for(const it of arr){ map.set(it.id, it); }
-  await withStore('readwrite', s=>s.clear());
-  for(const it of map.values()) await addItem(it);
-  render();
-};
-
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=> navigator.serviceWorker.register('./sw.js'));
-}
-
-openDB().then(()=>{ filterClearBtn.style.display = filterEl.value ? 'inline-flex' : 'none'; render(); });
-</script>
+  <script src="app.js" defer></script>
 </body>
 </html>
