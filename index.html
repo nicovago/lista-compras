@@ -6,60 +6,34 @@
   <meta name="theme-color" content="#ff7a59">
   <title>Lista de Compras</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=7">
-  <link rel="stylesheet" href="theme-v2.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="theme-v2.css?v=8">
 </head>
 <body>
   <main class="app-shell">
     <header class="hero">
       <div class="hero-copy">
         <span class="app-mark" aria-hidden="true">🛒</span>
-        <div>
-          <p class="eyebrow">Lista familiar</p>
-          <h1>Compras</h1>
-          <p class="hero-subtitle">Todo lo que falta, en un solo lugar.</p>
-        </div>
+        <div><p class="eyebrow">Lista familiar</p><h1>Compras</h1><p class="hero-subtitle">Todo lo que falta, en un solo lugar.</p></div>
       </div>
       <span id="syncStatus" class="status"><span class="status-dot"></span>Guardado local</span>
     </header>
-
     <section class="composer" aria-labelledby="formTitle">
-      <div class="section-heading">
-        <div>
-          <p class="section-kicker">Nuevo ítem</p>
-          <h2 id="formTitle">Agregar producto</h2>
-        </div>
-      </div>
-
+      <div class="section-heading"><div><p class="section-kicker">Nuevo ítem</p><h2 id="formTitle">Agregar producto</h2></div></div>
       <div class="form-grid">
         <label class="field product-field"><span>Producto</span><input id="itemName" autocomplete="off" placeholder="Ej.: Leche"></label>
         <label class="field quantity-field"><span>Cantidad</span><input id="itemQty" autocomplete="off" inputmode="text" placeholder="2"></label>
         <label class="field category-field"><span>Rubro</span><select id="itemCat"></select></label>
         <label class="field note-field"><span>Nota opcional</span><textarea id="itemNote" placeholder="Marca, presentación, corte…"></textarea></label>
       </div>
-
-      <div class="actions">
-        <button id="cancelEditBtn" class="secondary hidden" type="button">Cancelar</button>
-        <button id="addBtn" class="primary" type="button"><span aria-hidden="true">＋</span> Agregar</button>
-      </div>
+      <div class="actions"><button id="cancelEditBtn" class="secondary hidden" type="button">Cancelar</button><button id="addBtn" class="primary" type="button"><span aria-hidden="true">＋</span> Agregar</button></div>
     </section>
-
     <section class="tools-card">
-      <div class="filter-wrap">
-        <span class="search-icon" aria-hidden="true">⌕</span>
-        <input id="filter" placeholder="Buscar en la lista…">
-        <button id="filterClear" class="icon-btn hidden" aria-label="Borrar filtro">×</button>
-      </div>
+      <div class="filter-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="filter" placeholder="Buscar en la lista…"><button id="filterClear" class="icon-btn hidden" aria-label="Borrar filtro">×</button></div>
       <div id="quickCats" class="chips" aria-label="Filtrar por rubro"></div>
     </section>
-
-    <div class="list-heading">
-      <div><p class="section-kicker">Pendientes y comprados</p><h2>Mi lista</h2></div>
-      <p id="stats" class="stats"></p>
-    </div>
-
+    <div class="list-heading"><div><p class="section-kicker">Pendientes y comprados</p><h2>Mi lista</h2></div><p id="stats" class="stats"></p></div>
     <section id="listContainer" aria-live="polite"></section>
-
     <nav class="bottom-actions" aria-label="Acciones de la lista">
       <button id="shareBtn"><span aria-hidden="true">↗</span><span>Compartir</span></button>
       <button id="exportBtn"><span aria-hidden="true">⇩</span><span>Exportar</span></button>
@@ -68,7 +42,6 @@
       <input type="file" id="importFile" accept="application/json" hidden>
     </nav>
   </main>
-
-  <script src="app.js?v=7" defer></script>
+  <script src="app.js?v=8" defer></script>
 </body>
 </html>
