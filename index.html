@@ -4,18 +4,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#ff7a59">
-  <title>Lista de Compras</title>
+  <title>Prueba de acceso</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=10">
-  <link rel="stylesheet" href="theme-v2.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
+  <link rel="stylesheet" href="theme-v2.css?v=11">
 </head>
 <body>
   <section id="authGate" class="auth-gate">
     <div class="auth-card">
       <span class="auth-mark" aria-hidden="true">🛒</span>
-      <p class="eyebrow">Lista familiar</p>
-      <h1>Compras compartidas</h1>
-      <p>Ingresá con Google para ver y actualizar la misma lista desde todos tus dispositivos.</p>
+      <p class="eyebrow">Prueba de conexión</p>
+      <h1>Ingreso con Google</h1>
+      <p>En esta etapa verificaremos únicamente que Firebase Authentication reconozca tu cuenta.</p>
       <button id="loginBtn" class="google-btn" type="button">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#4285F4" d="M21.6 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.4a4.6 4.6 0 0 1-2 3v2.5h3.2c1.9-1.7 3-4.3 3-7.3Z"/><path fill="#34A853" d="M12 22c2.7 0 5-.9 6.6-2.5L15.4 17c-.9.6-2 1-3.4 1-2.6 0-4.8-1.8-5.6-4.1H3.1v2.6A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.4 13.9A6 6 0 0 1 6.1 12c0-.7.1-1.3.3-1.9V7.5H3.1A10 10 0 0 0 2 12c0 1.6.4 3.1 1.1 4.5l3.3-2.6Z"/><path fill="#EA4335" d="M12 6c1.5 0 2.8.5 3.8 1.5l2.9-2.8A9.7 9.7 0 0 0 12 2a10 10 0 0 0-8.9 5.5l3.3 2.6A6 6 0 0 1 12 6Z"/></svg>
         Continuar con Google
@@ -24,41 +24,16 @@
     </div>
   </section>
 
-  <main id="appContent" class="app-shell hidden">
-    <header class="hero">
-      <div class="hero-copy">
-        <span class="app-mark" aria-hidden="true">🛒</span>
-        <div><p class="eyebrow">Lista familiar</p><h1>Compras</h1><p class="hero-subtitle">Todo lo que falta, en un solo lugar.</p></div>
-      </div>
-      <div class="account-area">
-        <span id="syncStatus" class="status"><span class="status-dot"></span>Conectando…</span>
-        <button id="accountBtn" class="account-btn" type="button" aria-label="Cerrar sesión" title="Cerrar sesión"><span id="accountInitial">N</span></button>
-      </div>
-    </header>
-    <section class="composer" aria-labelledby="formTitle">
-      <div class="section-heading"><div><p class="section-kicker">Nuevo ítem</p><h2 id="formTitle">Agregar producto</h2></div></div>
-      <div class="form-grid">
-        <label class="field product-field"><span>Producto</span><input id="itemName" autocomplete="off" placeholder="Ej.: Leche"></label>
-        <label class="field quantity-field"><span>Cantidad</span><input id="itemQty" autocomplete="off" inputmode="text" placeholder="2"></label>
-        <label class="field category-field"><span>Rubro</span><select id="itemCat"></select></label>
-        <label class="field note-field"><span>Nota opcional</span><textarea id="itemNote" placeholder="Marca, presentación, corte…"></textarea></label>
-      </div>
-      <div class="actions"><button id="cancelEditBtn" class="secondary hidden" type="button">Cancelar</button><button id="addBtn" class="primary" type="button"><span aria-hidden="true">＋</span> Agregar</button></div>
-    </section>
-    <section class="tools-card">
-      <div class="filter-wrap"><span class="search-icon" aria-hidden="true">⌕</span><input id="filter" placeholder="Buscar en la lista…"><button id="filterClear" class="icon-btn hidden" aria-label="Borrar filtro">×</button></div>
-      <div id="quickCats" class="chips" aria-label="Filtrar por rubro"></div>
-    </section>
-    <div class="list-heading"><div><p class="section-kicker">Pendientes y comprados</p><h2>Mi lista</h2></div><p id="stats" class="stats"></p></div>
-    <section id="listContainer" aria-live="polite"></section>
-    <nav class="bottom-actions" aria-label="Acciones de la lista">
-      <button id="shareBtn"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 13v5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-5"/></svg><span>Compartir</span></button>
-      <button id="exportBtn"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg><span>Exportar</span></button>
-      <button id="importBtn"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20V8m0 0-4 4m4-4 4 4M5 5h14"/></svg><span>Importar</span></button>
-      <button id="clearDone" class="danger"><span aria-hidden="true">🗑️</span><span>Eliminar comprados</span></button>
-      <input type="file" id="importFile" accept="application/json" hidden>
-    </nav>
+  <main id="successView" class="auth-gate hidden">
+    <div class="auth-card">
+      <span class="auth-mark success-mark" aria-hidden="true">✓</span>
+      <p class="eyebrow">Autenticación correcta</p>
+      <h1 id="userName">Cuenta conectada</h1>
+      <p id="userEmail"></p>
+      <button id="logoutBtn" class="google-btn" type="button">Cerrar sesión</button>
+    </div>
   </main>
-  <script type="module" src="app.js?v=10"></script>
+
+  <script type="module" src="app.js?v=11"></script>
 </body>
 </html>
