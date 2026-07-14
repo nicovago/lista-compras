@@ -1,73 +1,61 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
-import {getAuth,GoogleAuthProvider,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
-import {getFirestore,collection,doc,setDoc,updateDoc,deleteDoc,onSnapshot,writeBatch,serverTimestamp} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut} from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
 
 const firebaseConfig={apiKey:'AIzaSyBbvUJsT1AEtLK7zKYQ8GZSXgw4srW61iU',authDomain:'lista-de-compras-6b8c6.firebaseapp.com',projectId:'lista-de-compras-6b8c6',storageBucket:'lista-de-compras-6b8c6.firebasestorage.app',messagingSenderId:'923961365656',appId:'1:923961365656:web:f0dad41f0ed53ed5b32ced'};
-const firebaseApp=initializeApp(firebaseConfig);
-const auth=getAuth(firebaseApp);
-const firestore=getFirestore(firebaseApp);
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
 const provider=new GoogleAuthProvider();
 provider.setCustomParameters({prompt:'select_account'});
-const itemsCollection=collection(firestore,'lists','main','items');
 
-const DB_NAME='shopping_db_v1';
-const STORE='items';
-const LAST_CATEGORY_KEY='shopping_last_category';
-const MIGRATION_KEY='firebase_migration_main_v1';
-const CATS=['Carnicería','Verdulería','Supermercado','Dietética','Ferretería','Mercería','Librería','Farmacia','Otros'];
-const CAT_META={Carnicería:{icon:'🥩',accent:'#9f4f46'},Verdulería:{icon:'🥬',accent:'#4f7a5b'},Supermercado:{icon:'🛒',accent:'#8a6a3e'},Dietética:{icon:'🌾',accent:'#7b6b45'},Ferretería:{icon:'🔧',accent:'#596675'},Mercería:{icon:'🧵',accent:'#7d5f76'},Librería:{icon:'✏️',accent:'#4f6980'},Farmacia:{icon:'💊',accent:'#4f7b77'},Otros:{icon:'📦',accent:'#6d6964'}};
-let localDb;
-let editingId=null;
-let activeCategory='';
-let currentItems=[];
-let currentUser=null;
-let unsubscribeItems=null;
+const authGate=document.getElementById('authGate');
+const successView=document.getElementById('successView');
+const loginBtn=document.getElementById('loginBtn');
+const logoutBtn=document.getElementById('logoutBtn');
+const authMessage=document.getElementById('authMessage');
+const userName=document.getElementById('userName');
+const userEmail=document.getElementById('userEmail');
 
-const $=id=>document.getElementById(id);
-const els={authGate:$('authGate'),appContent:$('appContent'),login:$('loginBtn'),authMessage:$('authMessage'),account:$('accountBtn'),accountInitial:$('accountInitial'),sync:$('syncStatus'),name:$('itemName'),qty:$('itemQty'),cat:$('itemCat'),note:$('itemNote'),add:$('addBtn'),cancel:$('cancelEditBtn'),filter:$('filter'),filterClear:$('filterClear'),clearDone:$('clearDone'),list:$('listContainer'),stats:$('stats'),export:$('exportBtn'),import:$('importBtn'),importFile:$('importFile'),quickCats:$('quickCats'),share:$('shareBtn'),formTitle:$('formTitle')};
-
-function setSync(text,state='online'){els.sync.innerHTML=`<span class="status-dot ${state}"></span>${text}`;}
-function showAuthError(error){console.error(error);els.authMessage.textContent=error?.code==='auth/unauthorized-domain'?'Este dominio todavía no está autorizado en Firebase.':'No se pudo ingresar. Volvé a intentarlo.';}
-function openLocalDB(){return new Promise((resolve,reject)=>{const request=indexedDB.open(DB_NAME,1);request.onupgradeneeded=event=>{const database=event.target.result;if(!database.objectStoreNames.contains(STORE))database.createObjectStore(STORE,{keyPath:'id'});};request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});}
-async function getLocalItems(){if(!localDb)localDb=await openLocalDB();return new Promise((resolve,reject)=>{const request=localDb.transaction(STORE,'readonly').objectStore(STORE).getAll();request.onsuccess=()=>resolve(request.result||[]);request.onerror=()=>reject(request.error);});}
-function uuid(){return crypto.randomUUID?.()||`${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;}
-function escapeHtml(value=''){return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));}
-function setCatStyle(element,category){element.style.setProperty('--cat-accent',(CAT_META[category]||CAT_META.Otros).accent);}
-function refreshCategoryButtons(){els.quickCats.querySelectorAll('.chip').forEach(button=>button.classList.toggle('active',button.dataset.category===activeCategory));}
-function setCategoryFilter(category){activeCategory=activeCategory===category?'':category;els.filter.value=activeCategory;els.filterClear.classList.toggle('hidden',!activeCategory);refreshCategoryButtons();render();}
-
-function initializeCategories(){
-  const allButton=document.createElement('button');allButton.type='button';allButton.className='chip all-chip active';allButton.dataset.category='';allButton.innerHTML='<span aria-hidden="true">☰</span><span>Todos</span>';allButton.onclick=()=>{activeCategory='';els.filter.value='';els.filterClear.classList.add('hidden');refreshCategoryButtons();render();};els.quickCats.appendChild(allButton);
-  for(const category of CATS){const option=document.createElement('option');option.value=category;option.textContent=category;els.cat.appendChild(option);const button=document.createElement('button');button.type='button';button.className='chip';button.dataset.category=category;button.innerHTML=`<span class="chip-icon" aria-hidden="true">${CAT_META[category].icon}</span><span>${category}</span>`;setCatStyle(button,category);button.onclick=()=>setCategoryFilter(category);els.quickCats.appendChild(button);}
-  const saved=localStorage.getItem(LAST_CATEGORY_KEY);els.cat.value=CATS.includes(saved)?saved:CATS[0];
+function showError(error){
+  console.error('Firebase Auth error:',error);
+  const details=[error?.code,error?.message].filter(Boolean).join(' · ');
+  authMessage.textContent=details||'No se pudo iniciar sesión.';
 }
-function resetForm(){editingId=null;els.name.value='';els.qty.value='';els.note.value='';els.formTitle.textContent='Agregar producto';els.add.innerHTML='<span aria-hidden="true">＋</span> Agregar';els.cancel.classList.add('hidden');els.name.focus();}
-async function save(){if(!currentUser)return;const name=els.name.value.trim();if(!name)return;localStorage.setItem(LAST_CATEGORY_KEY,els.cat.value);setSync('Guardando…','pending');const existing=currentItems.find(item=>item.id===editingId);const id=editingId||uuid();const payload={name,qty:els.qty.value.trim(),category:els.cat.value,note:els.note.value.trim(),done:existing?.done||false,created:existing?.created||Date.now(),updated:Date.now(),updatedBy:currentUser.email||currentUser.uid,serverUpdatedAt:serverTimestamp()};await setDoc(doc(itemsCollection,id),payload,{merge:true});resetForm();}
-function beginEdit(id){const item=currentItems.find(entry=>entry.id===id);if(!item)return;editingId=id;els.name.value=item.name;els.qty.value=item.qty||'';els.cat.value=item.category||CATS[0];els.note.value=item.note||'';els.formTitle.textContent='Editar producto';els.add.textContent='Guardar cambios';els.cancel.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});els.name.focus();}
-async function toggle(id){const item=currentItems.find(entry=>entry.id===id);if(!item)return;setSync('Guardando…','pending');await updateDoc(doc(itemsCollection,id),{done:!item.done,updated:Date.now(),updatedBy:currentUser.email||currentUser.uid,serverUpdatedAt:serverTimestamp()});}
-async function remove(id){const item=currentItems.find(entry=>entry.id===id);if(item&&confirm(`¿Eliminar “${item.name}”?`)){setSync('Guardando…','pending');await deleteDoc(doc(itemsCollection,id));if(editingId===id)resetForm();}}
 
-function itemRow(item){const li=document.createElement('li');li.className=`item${item.done?' done':''}`;const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=item.done;checkbox.setAttribute('aria-label',`Marcar ${item.name} como comprado`);checkbox.onchange=()=>toggle(item.id).catch(handleDataError);const text=document.createElement('div');text.innerHTML=`<div class="item-name">${escapeHtml(item.name)}</div>${item.note?`<div class="item-note">${escapeHtml(item.note)}</div>`:''}`;const qty=document.createElement('span');qty.className='item-qty';qty.textContent=item.qty||'';const actions=document.createElement('div');actions.className='item-actions';const edit=document.createElement('button');edit.className='action-icon edit-icon';edit.innerHTML='✏️';edit.title='Editar';edit.setAttribute('aria-label',`Editar ${item.name}`);edit.onclick=()=>beginEdit(item.id);const del=document.createElement('button');del.className='action-icon delete-icon';del.innerHTML='🗑️';del.title='Eliminar';del.setAttribute('aria-label',`Eliminar ${item.name}`);del.onclick=()=>remove(item.id).catch(handleDataError);actions.append(edit,del);li.append(checkbox,text,qty,actions);return li;}
-function render(){const query=els.filter.value.toLowerCase().trim();const items=currentItems.filter(item=>!query||[item.name,item.category,item.note].some(value=>(value||'').toLowerCase().includes(query))).sort((a,b)=>Number(a.done)-Number(b.done)||(a.category||'').localeCompare(b.category||'')||(b.created||0)-(a.created||0));els.list.innerHTML='';if(!items.length){els.list.innerHTML='<div class="card empty">No hay productos para mostrar.</div>';}else{const groups=items.reduce((acc,item)=>{(acc[item.category||'Otros']??=[]).push(item);return acc;},{});for(const category of Object.keys(groups).sort((a,b)=>a.localeCompare(b))){const group=document.createElement('section');group.className='group';const title=document.createElement('h2');title.className='group-title';title.innerHTML=`<span class="category-icon" aria-hidden="true">${(CAT_META[category]||CAT_META.Otros).icon}</span><span>${escapeHtml(category)}</span><span class="category-count">${groups[category].length}</span>`;setCatStyle(title,category);const list=document.createElement('ul');list.className='item-list';groups[category].forEach(item=>list.appendChild(itemRow(item)));group.append(title,list);els.list.appendChild(group);}}const remaining=currentItems.filter(item=>!item.done).length;els.stats.textContent=`${currentItems.length} ítems · ${remaining} pendientes`;}
+async function login(){
+  authMessage.textContent='Abriendo Google…';
+  loginBtn.disabled=true;
+  try{
+    await signInWithPopup(auth,provider);
+  }catch(error){
+    if(['auth/popup-blocked','auth/operation-not-supported-in-this-environment','auth/cancelled-popup-request'].includes(error?.code)){
+      authMessage.textContent='Redirigiendo a Google…';
+      await signInWithRedirect(auth,provider);
+      return;
+    }
+    showError(error);
+    loginBtn.disabled=false;
+  }
+}
 
-async function migrateLocalItems(){if(localStorage.getItem(MIGRATION_KEY))return;const localItems=await getLocalItems();if(!localItems.length){localStorage.setItem(MIGRATION_KEY,'empty');return;}const shouldMigrate=confirm(`Encontré ${localItems.length} producto${localItems.length===1?'':'s'} guardado${localItems.length===1?'':'s'} en este dispositivo. ¿Copiarlos a la lista compartida?`);if(!shouldMigrate){localStorage.setItem(MIGRATION_KEY,'skipped');return;}setSync('Migrando lista…','pending');const batch=writeBatch(firestore);for(const item of localItems){const id=item.id||uuid();batch.set(doc(itemsCollection,id),{name:item.name||'',qty:item.qty||'',category:CATS.includes(item.category)?item.category:'Otros',note:item.note||'',done:Boolean(item.done),created:Number(item.created)||Date.now(),updated:Date.now(),updatedBy:currentUser.email||currentUser.uid,serverUpdatedAt:serverTimestamp()},{merge:true});}await batch.commit();localStorage.setItem(MIGRATION_KEY,'done');}
-function subscribeToItems(){if(unsubscribeItems)unsubscribeItems();setSync('Sincronizando…','pending');unsubscribeItems=onSnapshot(itemsCollection,{includeMetadataChanges:true},snapshot=>{currentItems=snapshot.docs.map(entry=>({id:entry.id,...entry.data()}));render();setSync(snapshot.metadata.fromCache?'Sin conexión':'Sincronizado',snapshot.metadata.fromCache?'offline':'online');},handleDataError);}
-function handleDataError(error){console.error(error);setSync('Error de acceso','error');if(error?.code==='permission-denied')alert('Firebase rechazó el acceso. Revisá las reglas de Firestore y las cuentas autorizadas.');else alert('No se pudo completar la operación. Revisá la conexión e intentá nuevamente.');}
+loginBtn.addEventListener('click',login);
+logoutBtn.addEventListener('click',()=>signOut(auth));
 
-function buildShareText(){const pending=currentItems.filter(item=>!item.done);if(!pending.length)return'🛒 Lista de compras\n(vacía)';const groups=pending.reduce((acc,item)=>{(acc[item.category||'Otros']??=[]).push(item);return acc;},{});const lines=['🛒 Lista de compras'];for(const category of Object.keys(groups).sort((a,b)=>a.localeCompare(b))){lines.push(`\n${category}:`);for(const item of groups[category])lines.push(` • ${item.name}${item.qty?` x ${item.qty}`:''}${item.note?` (${item.note})`:''}`);}return lines.join('\n');}
-async function share(){const text=buildShareText();if(navigator.share){try{await navigator.share({text});return;}catch(error){if(error.name==='AbortError')return;}}window.open(`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank','noopener');}
-function exportData(){const blob=new Blob([JSON.stringify(currentItems,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=`lista_compras_${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(url);}
-function validImportedItem(item){return item&&typeof item==='object'&&typeof item.name==='string';}
-async function importData(file){let data;try{data=JSON.parse(await file.text());}catch{alert('El archivo no contiene JSON válido.');return;}if(!Array.isArray(data)||!data.every(validImportedItem)){alert('El archivo no tiene el formato esperado.');return;}if(!confirm(`¿Importar ${data.length} producto${data.length===1?'':'s'} a la lista compartida?`))return;setSync('Importando…','pending');const batch=writeBatch(firestore);for(const item of data){const id=typeof item.id==='string'?item.id:uuid();batch.set(doc(itemsCollection,id),{name:item.name,qty:item.qty||'',category:CATS.includes(item.category)?item.category:'Otros',note:item.note||'',done:Boolean(item.done),created:Number(item.created)||Date.now(),updated:Date.now(),updatedBy:currentUser.email||currentUser.uid,serverUpdatedAt:serverTimestamp()},{merge:true});}await batch.commit();}
+getRedirectResult(auth).catch(showError);
 
-els.login.onclick=async()=>{els.authMessage.textContent='Redirigiendo a Google…';try{await signInWithRedirect(auth,provider);}catch(error){showAuthError(error);}};
-els.account.onclick=()=>confirm('¿Cerrar sesión en este dispositivo?')&&signOut(auth);
-els.cat.addEventListener('change',()=>localStorage.setItem(LAST_CATEGORY_KEY,els.cat.value));
-els.add.onclick=()=>save().catch(handleDataError);els.cancel.onclick=resetForm;els.name.addEventListener('keydown',event=>{if(event.key==='Enter')save().catch(handleDataError);});els.qty.addEventListener('keydown',event=>{if(event.key==='Enter')save().catch(handleDataError);});
-els.filter.addEventListener('input',()=>{if(els.filter.value!==activeCategory)activeCategory='';els.filterClear.classList.toggle('hidden',!els.filter.value);refreshCategoryButtons();render();});els.filterClear.onclick=()=>{activeCategory='';els.filter.value='';els.filterClear.classList.add('hidden');refreshCategoryButtons();render();};
-els.clearDone.onclick=async()=>{const done=currentItems.filter(item=>item.done);if(!done.length)return;if(confirm(`¿Eliminar ${done.length} producto${done.length===1?'':'s'} comprado${done.length===1?'':'s'}?`)){setSync('Guardando…','pending');const batch=writeBatch(firestore);done.forEach(item=>batch.delete(doc(itemsCollection,item.id)));await batch.commit();}};els.share.onclick=share;els.export.onclick=exportData;els.import.onclick=()=>els.importFile.click();els.importFile.onchange=async event=>{const file=event.target.files?.[0];if(file)await importData(file).catch(handleDataError);event.target.value='';};
+onAuthStateChanged(auth,user=>{
+  loginBtn.disabled=false;
+  if(user){
+    userName.textContent=user.displayName||'Cuenta conectada';
+    userEmail.textContent=user.email||user.uid;
+    authGate.classList.add('hidden');
+    successView.classList.remove('hidden');
+  }else{
+    successView.classList.add('hidden');
+    authGate.classList.remove('hidden');
+  }
+});
 
-initializeCategories();
-getRedirectResult(auth).catch(showAuthError);
-onAuthStateChanged(auth,async user=>{currentUser=user;if(user){els.authGate.classList.add('hidden');els.appContent.classList.remove('hidden');els.accountInitial.textContent=(user.displayName||user.email||'U').trim().charAt(0).toUpperCase();subscribeToItems();try{await migrateLocalItems();}catch(error){handleDataError(error);}}else{if(unsubscribeItems){unsubscribeItems();unsubscribeItems=null;}currentItems=[];els.appContent.classList.add('hidden');els.authGate.classList.remove('hidden');els.authMessage.textContent='';}});
-if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=10',{updateViaCache:'none'}).then(registration=>registration.update()));
+if('serviceWorker'in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=11',{updateViaCache:'none'}).then(registration=>registration.update()));
+}
