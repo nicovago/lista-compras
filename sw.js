@@ -1,5 +1,5 @@
-const CACHE='compras-v17-enter-edit';
-const LOCAL_ASSETS=['./','./index.html','./styles.css?v=15','./theme-v2.css?v=15','./app.js?v=17','./manifest.json','./icon-192.png','./icon-512.png'];
+const CACHE='compras-v18-enter-edit';
+const LOCAL_ASSETS=['./','./index.html','./styles.css?v=15','./theme-v2.css?v=15','./app.js?v=18','./manifest.json','./icon-192.png','./icon-512.png'];
 const FIREBASE_ASSETS=[
   'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js',
   'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js',
